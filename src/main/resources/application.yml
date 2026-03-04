@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db.tpudpcbkcfrckehijzde.supabase.co:5432/postgres?sslmode=require}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:jeevansurya@143KLU}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 200MB
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}}
+  frontend-base-url: ${APP_BASE_URL:${APP_FRONTEND_BASE_URL:http://localhost:3000}}
+  mail:
+    from: ${APP_MAIL_FROM:${MAIL_USERNAME:no-reply@example.com}}
+  admin1:
+    email: ${APP_ADMIN1_EMAIL:}
+    password: ${APP_ADMIN1_PASSWORD:}
+
+google:
+  drive:
+    folder-id: ${GOOGLE_DRIVE_FOLDER_ID:}
+    service-account-json-path: ${GOOGLE_SERVICE_ACCOUNT_JSON_PATH:}
+    service-account-json-base64: ${GOOGLE_SERVICE_ACCOUNT_JSON_BASE64:}
+
