@@ -33,12 +33,18 @@ spring:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 management:
   endpoints:
     web:
       exposure:
         include: health
+  health:
+    mail:
+      enabled: false
 
 app:
   jwt:
@@ -58,4 +64,3 @@ google:
     folder-id: ${GOOGLE_DRIVE_FOLDER_ID}
     service-account-json-base64: ${GOOGLE_SERVICE_ACCOUNT_JSON_BASE64}
     service-account-json-path: ${GOOGLE_SERVICE_ACCOUNT_JSON_PATH:}
-
