@@ -31,19 +31,32 @@ public class GoogleDriveService {
             metadata.setName(multipartFile.getOriginalFilename());
             metadata.setParents(List.of(folderId));
 
-            ByteArrayContent content = new ByteArrayContent(multipartFile.getContentType(), multipartFile.getBytes());
+            String contentType = multipartFile.getContentType() == null
+                    ? "application/octet-stream"
+                    : multipartFile.getContentType();
+            ByteArrayContent content = new ByteArrayContent(contentType, multipartFile.getBytes());
 
             File uploaded = drive.files()
                     .create(metadata, content)
                     .setFields("id, webViewLink")
+                    .setSupportsAllDrives(true)
                     .execute();
 
             Permission permission = new Permission();
             permission.setType("anyone");
             permission.setRole("reader");
-            drive.permissions().create(uploaded.getId(), permission).execute();
+            drive.permissions()
+                    .create(uploaded.getId(), permission)
+                    .setSupportsAllDrives(true)
+                    .execute();
 
             return new DriveUploadResult(uploaded.getId(), uploaded.getWebViewLink());
+        } catch (GoogleJsonResponseException ex) {
+            String apiMessage = ex.getDetails() != null ? ex.getDetails().getMessage() : ex.getMessage();
+            log.error("Google Drive upload failed (status {}): {}", ex.getStatusCode(), apiMessage, ex);
+            throw new BadRequestException(
+                    "Failed to upload file to Google Drive. Check GOOGLE_DRIVE_FOLDER_ID and folder sharing for service account."
+            );
         } catch (IOException ex) {
             log.error("Google Drive upload failed", ex);
             throw new BadRequestException("Failed to upload file to Google Drive");
