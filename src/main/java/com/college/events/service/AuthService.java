@@ -18,11 +18,14 @@ import com.college.events.util.TokenUtil;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Locale;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class AuthService {
 
@@ -84,13 +87,14 @@ public class AuthService {
 
     @Transactional
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
-        userRepository.findByEmailIgnoreCase(request.email()).ifPresent(this::createTokenAndSendEmail);
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        userRepository.findByEmailIgnoreCase(normalizedEmail).ifPresent(this::createTokenAndSendEmail);
         return new MessageResponse("If the email exists, a reset link has been sent.");
     }
 
     @Transactional
     public MessageResponse resetPassword(ResetPasswordRequest request) {
-        String tokenHash = TokenUtil.sha256(request.token());
+        String tokenHash = TokenUtil.sha256(request.token().trim());
         PasswordResetToken resetToken = passwordResetTokenRepository
                 .findByTokenHashAndUsedAtIsNullAndExpiresAtAfter(tokenHash, LocalDateTime.now())
                 .orElseThrow(() -> new BadRequestException("Token is invalid or expired"));
@@ -114,7 +118,12 @@ public class AuthService {
 
         String resetLink = frontendBaseUrl + "/admin/reset-password?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         String recipientName = user.getClubName() != null ? user.getClubName() : user.getEmail();
-        emailService.sendPasswordResetEmail(user.getEmail(), resetLink, recipientName);
+        try {
+            emailService.sendPasswordResetEmail(user.getEmail(), resetLink, recipientName);
+        } catch (RuntimeException ex) {
+            log.warn("Password reset email failed for {}", user.getEmail(), ex);
+            throw new BadRequestException("Unable to send reset email. Check MAIL_USERNAME/MAIL_PASSWORD/APP_MAIL_FROM.");
+        }
     }
 
     private User resolveUserByIdentifier(String identifier) {
