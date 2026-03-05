@@ -17,9 +17,11 @@ import com.college.events.security.AppUserPrincipal;
 import com.college.events.util.MimeTypeUtil;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -55,14 +57,16 @@ public class EventService {
     public List<EventResponse> getPublicEvents(String club, String search) {
         String normalizedClub = normalize(club);
         String normalizedSearch = normalize(search);
-        return eventRepository.findByExpiresAtAfterOrderByEventDateAscEventTimeAsc(LocalDateTime.now())
-                .stream()
-                .filter(event -> normalizedClub == null
-                        || (event.getClubName() != null && event.getClubName().equalsIgnoreCase(normalizedClub)))
-                .filter(event -> normalizedSearch == null
-                        || (event.getEventName() != null
-                        && event.getEventName().toLowerCase(Locale.ROOT).contains(normalizedSearch.toLowerCase(Locale.ROOT))))
-                .map(this::toResponse)
+        List<Event> events = eventRepository.findActiveEvents(normalizedClub, normalizedSearch, LocalDateTime.now());
+        if (events.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> eventIds = events.stream().map(Event::getId).toList();
+        Map<Long, List<EventFileResponse>> resourcesByEventId = mapResourcesByEventId(eventIds);
+
+        return events.stream()
+                .map(event -> toResponse(event, resourcesByEventId.getOrDefault(event.getId(), List.of())))
                 .toList();
     }
 
@@ -214,6 +218,10 @@ public class EventService {
                 ))
                 .toList();
 
+        return toResponse(event, resources);
+    }
+
+    private EventResponse toResponse(Event event, List<EventFileResponse> resources) {
         return new EventResponse(
                 event.getId(),
                 event.getClubName(),
@@ -226,6 +234,27 @@ public class EventService {
                 event.getExpiresAt(),
                 resources
         );
+    }
+
+    private Map<Long, List<EventFileResponse>> mapResourcesByEventId(List<Long> eventIds) {
+        List<EventFile> files = eventFileRepository.findByEventIdInOrderByEventIdAscUploadedAtAsc(eventIds);
+        if (files.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, List<EventFileResponse>> resourcesByEventId = new HashMap<>();
+        for (EventFile file : files) {
+            EventFileResponse response = new EventFileResponse(
+                    file.getId(),
+                    file.getFileName(),
+                    file.getMimeType(),
+                    file.getDriveFileId(),
+                    file.getDriveWebViewLink(),
+                    file.getUploadedAt()
+            );
+            resourcesByEventId.computeIfAbsent(file.getEvent().getId(), ignored -> new ArrayList<>()).add(response);
+        }
+        return resourcesByEventId;
     }
 
     private String normalize(String value) {

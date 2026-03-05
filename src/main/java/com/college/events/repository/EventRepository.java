@@ -18,8 +18,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     Optional<Event> findWithFilesById(@Param("eventId") Long eventId);
 
     @Query("""
-            select distinct e from Event e
-            left join fetch e.files f
+            select e from Event e
+            join fetch e.createdByUser u
             where e.expiresAt > :now
               and (:club is null or lower(e.clubName) = lower(:club))
               and (:search is null or lower(e.eventName) like lower(concat('%', :search, '%')))

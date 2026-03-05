@@ -7,5 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface EventFileRepository extends JpaRepository<EventFile, Long> {
     List<EventFile> findByEventId(Long eventId);
 
+    List<EventFile> findByEventIdInOrderByEventIdAscUploadedAtAsc(List<Long> eventIds);
+
     void deleteByEventId(Long eventId);
 }
