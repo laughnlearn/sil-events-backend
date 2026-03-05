@@ -29,6 +29,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findByCreatedByUserIdAndExpiresAtAfterOrderByEventDateAscEventTimeAsc(Long userId, LocalDateTime now);
 
+    List<Event> findByExpiresAtAfterOrderByEventDateAscEventTimeAsc(LocalDateTime now);
+
     List<Event> findByExpiresAtBefore(LocalDateTime now);
 
     boolean existsByCreatedByUserId(Long userId);

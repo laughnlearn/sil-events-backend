@@ -12,10 +12,12 @@ import com.college.events.repository.UserRepository;
 import com.college.events.util.TokenUtil;
 import java.util.Comparator;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class AdminUserService {
 
@@ -59,7 +61,11 @@ public class AdminUserService {
         admin2.setPasswordHash(passwordEncoder.encode(tempPassword));
 
         User saved = userRepository.save(admin2);
-        emailService.sendAdmin2CredentialsEmail(saved.getEmail(), saved.getClubName(), tempPassword);
+        try {
+            emailService.sendAdmin2CredentialsEmail(saved.getEmail(), saved.getClubName(), tempPassword);
+        } catch (RuntimeException ex) {
+            log.warn("ADMIN2 created but credentials email failed for {}", saved.getEmail(), ex);
+        }
 
         return new CreateAdmin2Response(toResponse(saved), tempPassword);
     }
@@ -67,7 +73,7 @@ public class AdminUserService {
     public List<AdminUserResponse> getAdminUsers() {
         return userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Role.ADMIN2)
-                .sorted(Comparator.comparing(User::getCreatedAt).reversed())
+                .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::toResponse)
                 .toList();
     }

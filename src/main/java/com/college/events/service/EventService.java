@@ -19,9 +19,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -49,11 +51,17 @@ public class EventService {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
+    @Transactional(readOnly = true)
     public List<EventResponse> getPublicEvents(String club, String search) {
         String normalizedClub = normalize(club);
         String normalizedSearch = normalize(search);
-        return eventRepository.findActiveEvents(normalizedClub, normalizedSearch, LocalDateTime.now())
+        return eventRepository.findByExpiresAtAfterOrderByEventDateAscEventTimeAsc(LocalDateTime.now())
                 .stream()
+                .filter(event -> normalizedClub == null
+                        || (event.getClubName() != null && event.getClubName().equalsIgnoreCase(normalizedClub)))
+                .filter(event -> normalizedSearch == null
+                        || (event.getEventName() != null
+                        && event.getEventName().toLowerCase(Locale.ROOT).contains(normalizedSearch.toLowerCase(Locale.ROOT))))
                 .map(this::toResponse)
                 .toList();
     }
@@ -195,7 +203,7 @@ public class EventService {
 
     private EventResponse toResponse(Event event) {
         List<EventFileResponse> resources = event.getFiles().stream()
-                .sorted(Comparator.comparing(EventFile::getUploadedAt))
+                .sorted(Comparator.comparing(EventFile::getUploadedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(f -> new EventFileResponse(
                         f.getId(),
                         f.getFileName(),
