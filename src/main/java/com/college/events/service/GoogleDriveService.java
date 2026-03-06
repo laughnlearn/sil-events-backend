@@ -8,6 +8,8 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.Permission;
 import java.io.IOException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,12 +19,14 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class GoogleDriveService {
 
+    private static final Pattern FOLDER_URL_PATTERN = Pattern.compile("/folders/([a-zA-Z0-9_-]+)");
+
     private final Drive drive;
     private final String folderId;
 
     public GoogleDriveService(Drive drive, @Value("${google.drive.folder-id}") String folderId) {
         this.drive = drive;
-        this.folderId = folderId;
+        this.folderId = normalizeFolderId(folderId);
     }
 
     public DriveUploadResult uploadFile(MultipartFile multipartFile) {
@@ -54,9 +58,7 @@ public class GoogleDriveService {
         } catch (GoogleJsonResponseException ex) {
             String apiMessage = ex.getDetails() != null ? ex.getDetails().getMessage() : ex.getMessage();
             log.error("Google Drive upload failed (status {}): {}", ex.getStatusCode(), apiMessage, ex);
-            throw new BadRequestException(
-                    "Failed to upload file to Google Drive. Check GOOGLE_DRIVE_FOLDER_ID and folder sharing for service account."
-            );
+            throw new BadRequestException("Google Drive upload failed: " + apiMessage);
         } catch (IOException ex) {
             log.error("Google Drive upload failed", ex);
             throw new BadRequestException("Failed to upload file to Google Drive");
@@ -77,5 +79,22 @@ public class GoogleDriveService {
             log.warn("Failed to delete Drive file {}: {}", driveFileId, ex.getMessage());
             throw new BadRequestException("Failed to delete file from Google Drive: " + driveFileId);
         }
+    }
+
+    private String normalizeFolderId(String rawFolderId) {
+        if (rawFolderId == null) {
+            return null;
+        }
+
+        String trimmed = rawFolderId.trim();
+        if (trimmed.isBlank()) {
+            return trimmed;
+        }
+
+        Matcher matcher = FOLDER_URL_PATTERN.matcher(trimmed);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return trimmed;
     }
 }
