@@ -21,8 +21,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             select e from Event e
             join fetch e.createdByUser u
             where e.expiresAt > :now
-              and (:club is null or lower(e.clubName) = lower(:club))
-              and (:search is null or lower(e.eventName) like lower(concat('%', :search, '%')))
+              and (:club = '' or lower(e.clubName) = lower(:club))
+              and (:search = '' or lower(e.eventName) like lower(concat('%', :search, '%')))
             order by e.eventDate asc, e.eventTime asc
             """)
     List<Event> findActiveEvents(@Param("club") String club, @Param("search") String search, @Param("now") LocalDateTime now);

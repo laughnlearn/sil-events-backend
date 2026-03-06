@@ -55,8 +55,8 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<EventResponse> getPublicEvents(String club, String search) {
-        String normalizedClub = normalize(club);
-        String normalizedSearch = normalize(search);
+        String normalizedClub = normalizeOrEmpty(club);
+        String normalizedSearch = normalizeOrEmpty(search);
         List<Event> events = eventRepository.findActiveEvents(normalizedClub, normalizedSearch, LocalDateTime.now());
         if (events.isEmpty()) {
             return List.of();
@@ -263,5 +263,10 @@ public class EventService {
         }
         String trimmed = value.trim();
         return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private String normalizeOrEmpty(String value) {
+        String normalized = normalize(value);
+        return normalized == null ? "" : normalized;
     }
 }
